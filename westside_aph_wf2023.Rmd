@@ -1,0 +1,39 @@
+---
+title: "West Side Aphid Whitefly 2023"
+output: html_document
+date: '2023-11-28'
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+setwd("C:/Users/bachhami/Box Sync/UCDavis_Buddhi/WestSide_aph_wf2023")
+```
+
+```{r}
+library(ggplot2) 
+library(car);library(pastecs);library(MASS)
+library(reshape2);library(dplyr);library(phia)
+library(multcomp);library(pastecs)
+library(emmeans);library(multcompView)
+library(readxl); library(openxlsx)
+library(xlsx);library(xlsxjars)
+library(dplyr);library(plyr)
+library(tidyverse)
+library(forcats)
+#library(psych)
+```
+
+```{r}
+WSAphWf2023_new <-read_excel ("Data/Aph-WF Data.xlsx",
+                          sheet = "AF_WF2023_ForR") 
+
+#/Analysis/DPR analysis
+WSAphWf2023_new <- mutate(WSAphWf2023_new, Date = as.Date(Date, origin = "21/8/2023"))
+
+head (WSAphWf2023_new)
+```
+
