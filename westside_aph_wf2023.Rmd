@@ -37,3 +37,315 @@ WSAphWf2023_new <- mutate(WSAphWf2023_new, Date = as.Date(Date, origin = "21/8/2
 head (WSAphWf2023_new)
 ```
 
+```{r}
+#Renaming DATs
+
+WSAphWf2023_update<-WSAphWf2023_new %>%
+  mutate(DAT = case_when(
+    DAT == '0 DAT-1' ~ '0',
+    DAT == '7 DAT-1' ~ '7-DAT1',
+    DAT == '10 DAT-1' ~ '10-DAT1',
+    DAT == '13 DAT-1' ~ '13-DAT1',
+    DAT == '3 DAT-2' ~ '3-DAT2',
+    DAT == '7 DAT-2' ~ '7-DAT2',
+    DAT == '10 DAT-2' ~ '10-DAT2',
+    DAT == '14 DAT-2' ~ '14-DAT2',
+    DAT == '21 DAT-2' ~ '21-DAT2'))  
+```
+
+
+```{r}
+# Frequency table for DAT and Leaf Location data collection 
+freq_table <- table(WSAphWf2023_update$DAT, WSAphWf2023_update$Leaf_Location)
+freq_table
+```
+
+```{r}
+#Changing into factors
+
+WSAphWf2023_update$DAT<-as.factor(WSAphWf2023_update$DAT) 
+WSAphWf2023_update$TRT<-as.factor(WSAphWf2023_update$TRT)
+WSAphWf2023_update$Product<-as.factor(WSAphWf2023_update$Product)
+WSAphWf2023_update$Block<-as.factor(WSAphWf2023_update$Block)
+WSAphWf2023_update$DPR_Label<-as.factor(WSAphWf2023_update$DPR_Label)
+WSAphWf2023_update$App<-as.factor(WSAphWf2023_update$App)
+WSAphWf2023_update$Leaf_Location<-as.factor(WSAphWf2023_update$Leaf_Location)
+```
+
+
+```{r}
+#Reordering the DAT
+
+WSAphWf2023_update$DAT<- ordered(WSAphWf2023_update$DAT, levels = c("0", "7-DAT1","10-DAT1", "13-DAT1", "3-DAT2","7-DAT2", "10-DAT2", "14-DAT2", "21-DAT2"))
+
+head(WSAphWf2023_update)
+```
+
+
+```{r}
+# For DPR 
+# Selecting Sefina, pqz, sivanto, assail, courier, untreated
+
+dpr_data2023<-WSAphWf2023_update %>% 
+  filter (DPRTrial %in%c("DPR"))
+
+dpr_data2023$DPR_Label<- ordered(dpr_data2023$DPR_Label, levels = c("Acetamiprid_LowCov", "Acetamiprid_StdCov", "Afidopyropen_LowCov", "Afidopyropen_StdCov", "Buprofezin_LowCov", "Buprofezin_StdCov", "Flupyradifurone_LowCov",  "Flupyradifurone_StdCov", "Pyrifluquinazon_LowCov", "Pyrifluquinazon_StdCov", "Untreated"))
+
+dpr_data2023.App1 <- dpr_data2023 %>%
+  filter (DAT %in% c("7-DAT1","10-DAT1","13-DAT1"))
+
+head(dpr_data2023.App1)
+
+dpr_data2023.App2 <- dpr_data2023 %>%
+  filter (DAT %in% c("3-DAT2","7-DAT2","10-DAT2", "13-DAT2","21-DAT2"))
+
+head(dpr_data2023.App2)
+```
+
+```{r}
+library(plyr)
+#summary whitefly Nymphs and adults
+summaryWf<- ddply(dpr_data2023, c("DAT","Product","TRT", "App", "Leaf_Location", "DPR_Label"), summarise,
+                  N2    = sum(!is.na(WF.Nym)),
+                  WfNym.Mean = mean(WF.Nym, na.rm=TRUE),
+                  WfNymSD   = sd(WF.Nym, na.rm=TRUE),
+                  WfNySE   = WfNymSD / sqrt(N2),
+                  WfNy.Sum = sum(WF.Nym, na.rm=TRUE),
+                  
+                  N3    = sum(!is.na(WF.Ad)),
+                  WfAd.Mean = mean(WF.Ad, na.rm=TRUE),
+                  WfAdSD   = sd(WF.Ad, na.rm=TRUE),
+                  WfAdSE   = WfAdSD / sqrt(N3),
+                  WfAd.Sum = sum(WF.Ad, na.rm=TRUE))
+
+summaryWf
+
+
+## Whitefly after treatment
+SummedWF<- ddply(dpr_data2023, c("Product","TRT","Block", "Leaf_Location", "DPR_Label", "App", "DAT"), summarise,
+                 WfNym.Sum = sum(WF.Nym, na.rm=TRUE),
+                 WfAd.Sum = sum(WF.Ad, na.rm=TRUE))
+
+
+SummedWF
+
+SummedWF.Avg<- ddply(SummedWF, c("Product","TRT", "Leaf_Location", "DPR_Label", "DAT"), summarise,
+                     N = sum(!is.na(WfNym.Sum)),
+                     WfNym.SumAvg = mean(WfNym.Sum, na.rm=TRUE),
+                     WfNym.SumSD   = sd(WfNym.Sum, na.rm=TRUE),
+                     WfNym.SumSE   = WfNym.SumSD / sqrt(N),
+                     WfAd.SumAvg = mean(WfAd.Sum, na.rm=TRUE),
+                     WfAd.SumSD   = sd(WfAd.Sum, na.rm=TRUE),
+                     WfAd.SumSE   = WfAd.SumSD / sqrt(N) ) 
+
+SummedWF.Avg
+#write.xlsx (as.data.frame(SummedWF.Avg), file = "SummedWF.Avg2023.xlsx")
+
+
+
+summaryDPR<- ddply(dpr_data2023, c("DAT","TRT","Product","DPR_Label"), summarise,
+                      N    = sum(!is.na(WF.Nym)),
+                      WF.Nym.Mean = mean(WF.Nym, na.rm=TRUE),
+                      WF.Nym.MeanSE   = sd(WF.Nym, na.rm=TRUE) / sqrt(N),
+                     
+                      WF.Ad.Mean = mean(WF.Ad, na.rm=TRUE),
+                      WF.Ad.MeanSE   = sd(WF.Ad, na.rm=TRUE) / sqrt(N),
+                      
+                      Aph.Tot.Mean = mean(Aph.Tot, na.rm=TRUE),
+                      Aph.Tot.MeanSE   = sd(Aph.Tot, na.rm=TRUE) / sqrt(N))
+
+summaryDPR <- data.frame(lapply(summaryDPR,   
+                                 function(x) if(is.numeric(x)) round(x, 2) else x))   
+
+#print(summaryDPR)
+
+
+#Summed DPR
+SummedDPR<- ddply(dpr_data2023, c("TRT","Product","DPR_Label","Block", "Leaf_Location"), summarise,
+                    WF.Nym.Sum = sum(WF.Nym, na.rm=TRUE),
+                    WF.Ad.Sum = sum(WF.Ad, na.rm=TRUE),
+                    Aph.Tot.Sum = sum(Aph.Tot, na.rm=TRUE))
+
+SummedDPR.Avg<- ddply(SummedDPR, c("TRT","Product","DPR_Label", "Leaf_Location"), summarise,
+                    N = sum(!is.na(WF.Nym.Sum)),
+                    WF.Nym.SumAvg = mean(WF.Nym.Sum, na.rm=TRUE),
+                    WF.Nym.SumSE   = sd(WF.Nym.Sum, na.rm=TRUE) / sqrt(N),
+                    WF.Ad.SumAvg = mean(WF.Ad.Sum, na.rm=TRUE),
+                    WF.Ad.SumSE   = sd(WF.Ad.Sum, na.rm=TRUE) / sqrt(N),
+                    Aph.Tot.SumAvg = mean(Aph.Tot.Sum, na.rm=TRUE),
+                    Aph.Tot.SumSE   = sd(Aph.Tot.Sum, na.rm=TRUE) / sqrt(N))
+SummedDPR.Avg<-SummedDPR.Avg[order(SummedDPR.Avg$DPR_Label),]
+ 
+
+
+
+#By application 
+SummedDPR.App1<- ddply(dpr_data2023.App1, c("TRT","Product","DPR_Label","Block", "Leaf_Location", "DAT"), summarise,
+                    WF.Nym.Sum = sum(WF.Nym, na.rm=TRUE),
+                    WF.Ad.Sum = sum(WF.Ad, na.rm=TRUE),
+                    Aph.Tot.Sum = sum(Aph.Tot, na.rm=TRUE))
+
+SummedDPR.App1.Avg<- ddply(SummedDPR.App1, c("TRT","Product","DPR_Label", "Leaf_Location", "DAT"), summarise,
+                    N = sum(!is.na(WF.Nym.Sum)),
+                    WF.Nym.SumAvg = mean(WF.Nym.Sum, na.rm=TRUE),
+                    WF.Nym.SumSE   = sd(WF.Nym.Sum, na.rm=TRUE) / sqrt(N),
+                    WF.Ad.SumAvg = mean(WF.Ad.Sum, na.rm=TRUE),
+                    WF.Ad.SumSE   = sd(WF.Ad.Sum, na.rm=TRUE) / sqrt(N),
+                    Aph.Tot.SumAvg = mean(Aph.Tot.Sum, na.rm=TRUE),
+                    Aph.Tot.SumSE   = sd(Aph.Tot.Sum, na.rm=TRUE) / sqrt(N))
+SummedDPR.App1.Avg<-SummedDPR.App1.Avg[order(SummedDPR.App1.Avg$DPR_Label),]
+
+str (SummedDPR.App1.Avg) 
+ 
+
+SummedDPR.App2<- ddply(dpr_data2023.App2, c("TRT","Product","DPR_Label","Block", "Leaf_Location" ), summarise,
+                    WF.Nym.Sum = sum(WF.Nym, na.rm=TRUE),
+                    WF.Ad.Sum = sum(WF.Ad, na.rm=TRUE),
+                    Aph.Tot.Sum = sum(Aph.Tot, na.rm=TRUE))
+
+SummedDPR.App2.Avg<- ddply(SummedDPR.App2, c("TRT","Product","DPR_Label", "Leaf_Location"), summarise,
+                    N = sum(!is.na(WF.Nym.Sum)),
+                    WF.Nym.SumAvg = mean(WF.Nym.Sum, na.rm=TRUE),
+                    WF.Nym.SumSE   = sd(WF.Nym.Sum, na.rm=TRUE) / sqrt(N),
+                    WF.Ad.SumAvg = mean(WF.Ad.Sum, na.rm=TRUE),
+                    WF.Ad.SumSE   = sd(WF.Ad.Sum, na.rm=TRUE) / sqrt(N),
+                    Aph.Tot.SumAvg = mean(Aph.Tot.Sum, na.rm=TRUE),
+                    Aph.Tot.SumSE   = sd(Aph.Tot.Sum, na.rm=TRUE) / sqrt(N))
+SummedDPR.App2.Avg<-SummedDPR.App2.Avg[order(SummedDPR.App2.Avg$DPR_Label),]
+```
+
+```{r}
+# Summed data with selected DATs for global model
+
+dpr_data2023_selected <- dpr_data2023%>%
+  filter (DAT == c("7-DAT1", "13-DAT1", "7-DAT2", "14-DAT2"))
+
+Summed_all<- ddply(dpr_data2023_selected, c("Product","TRT","Block", "Leaf_Location", "DPR_Label", "App"), summarise,
+                 WfNym.Sum = sum(WF.Nym, na.rm=TRUE),
+                 WfAd.Sum = sum(WF.Ad, na.rm=TRUE),
+                 Aph.Tot.Sum = sum(Aph.Tot, na.rm=TRUE))
+
+Summed_all
+```
+
+
+
+```{r}
+# Combined model: whitefly nymphs, whitefly adults, aphid total
+
+library(boot)
+library(MASS)
+library(performance)
+library(vcd)
+
+WF.Nym_Summed<-lm(sqrt(WfNym.Sum)~ DPR_Label+Block+  Leaf_Location + App, data = Summed_all)
+Anova(WF.Nym_Summed)
+
+
+WFAd_Summed<-lm(sqrt(WfAd.Sum)~ DPR_Label + Block+ Leaf_Location + App, data = Summed_all)
+Anova(WFAd_Summed)
+
+
+Aph.Tot_Summed<-lm(sqrt(Aph.Tot.Sum)~ DPR_Label +Block+ Leaf_Location + App, data = Summed_all)
+Anova(Aph.Tot_Summed)
+```
+
+```{r}
+# Model by applications with selected DATs 
+
+# Application 1
+Summed_app1 <- Summed_all %>%
+  filter (App == "App1")
+
+# Whitefly nymphs
+WF.Nym_Summed_app1<-lm(sqrt(WfNym.Sum)~ DPR_Label + Leaf_Location, data = Summed_app1)
+Anova(WF.Nym_Summed_app1)
+
+# Whitefly adults
+WF.Adult_Summed_app1<-lm(sqrt(WfAd.Sum)~ DPR_Label +  Leaf_Location, data = Summed_app1)
+Anova(WF.Adult_Summed_app1)
+
+#Aphid adult
+Aphid_Summed_app1<-lm(sqrt(Aph.Tot.Sum)~ DPR_Label +  Leaf_Location, data = Summed_app1)
+Anova(Aphid_Summed_app1)
+
+```
+
+```{r}
+# Application 2
+
+Summed_app2 <- Summed_all %>%
+  filter (App == "App2")
+# Whitefly nymphs
+WF.Nym_Summed_app2<-lm(sqrt(WfNym.Sum)~ DPR_Label+Block +  Leaf_Location, data = Summed_app2)
+Anova(WF.Nym_Summed_app2)
+
+# Whitefly adults
+WF.Adult_Summed_app2<-lm(sqrt(WfAd.Sum)~ DPR_Label+Block +  Leaf_Location, data = Summed_app2)
+Anova(WF.Adult_Summed_app2)
+
+#Aphid adult
+Aphid_Summed_app2<-lm(sqrt(Aph.Tot.Sum)~ DPR_Label+Block +  Leaf_Location, data = Summed_app2)
+Anova(Aphid_Summed_app2)
+
+```
+
+```{r}
+library(boot)
+library(MASS)
+library(performance)
+library(vcd)
+
+# Whitefly nymphs
+# Top location
+# Application 1
+
+ SummedWF_top_app1 <-  SummedWF %>%
+   filter (Leaf_Location == "Top", App == "App1")
+
+ SummedWF_top_app1
+
+WF.Nym_Summed_top_app1<-lm(sqrt(WfNym.Sum)~DPR_Label,data = SummedWF_top_app1)
+#WF.Nym_Summed <- glm.nb(round(WF.Nym.Sum,0)~DPR_Label+Block,data=SummedDPR)
+Anova(WF.Nym_Summed_top_app1)
+
+#par(mfrow = c(2,2),mai=c(.7,.7,.2,.01));plot(WF.Nym_Summed);par(mfrow = c(1,1),mai=c(1,1,1,1))
+WF.Nym_Summed_top_app1 <- emmeans(WF.Nym_Summed_top_app1, pairwise ~ DPR_Label,adjust="FDR",type="response") #;LS_WF.Nym_Summed
+
+cld(WF.Nym_Summed_top_app1$emmeans,alpha   = 0.05,Letters = letters,adjust="FDR")->CLD_WF.Nym_Summed_top_app1;CLD_WF.Nym_Summed_top_app1
+```
+##plotting
+
+```{r}
+# Assigning CLD letters
+XX<-as.data.frame(CLD_WF.Nym_Summed_top_app1[order(CLD_WF.Nym_Summed_top_app1$DPR_Label),])
+XX$group<-gsub("[[:space:]]", "", XX$.group)
+XX$WF.Ad.SumAvg<-SummedDPR.Avg$WF.Ad.SumAvg
+
+
+
+WFNymChart_dpr2023_cld_top_app1 <- SummedWF %>%
+  filter (Leaf_Location == "Top")%>%
+  filter (App == "App1")%>%
+  ggplot(aes(fill=DAT, y=WfNym.Sum, x=DPR_Label)) +
+  geom_bar(position="stack", stat="identity", color="#333333", size=0.1) +
+  scale_fill_brewer(palette="Spectral") +
+  theme_classic() +
+  theme(axis.text.x=element_text(angle=60, hjust=0.99)) +
+  theme(text=element_text(size=15)) +
+  theme(axis.text.x=element_text(color="#000000", size=12),
+        axis.text.y=element_text(color="#000000", size=12)) +
+  ylab("Avg. Aphids (per leaf)") +
+  labs(fill="DAT") + 
+  ggtitle("App. 1") +
+  ylim(0, 10) +
+  
+  geom_text(label=cld_letters, aes(x=DPR_Label, y=WfNym.Sum , label=group, fill=NULL),
+            position=position_stack(vjust=0.5), size=3) +
+  theme(legend.position="none")
+
+
+
+WFNymChart_dpr2023_cld_top_app1
+```
+
