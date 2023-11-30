@@ -24,6 +24,9 @@ library(xlsx);library(xlsxjars)
 library(dplyr);library(plyr)
 library(tidyverse)
 library(forcats)
+library(boot)
+library(performance)
+library(vcd)
 #library(psych)
 ```
 
@@ -36,6 +39,8 @@ WSAphWf2023_new <- mutate(WSAphWf2023_new, Date = as.Date(Date, origin = "21/8/2
 
 head (WSAphWf2023_new)
 ```
+
+
 
 ```{r}
 #Renaming DATs
@@ -79,7 +84,9 @@ WSAphWf2023_update$Leaf_Location<-as.factor(WSAphWf2023_update$Leaf_Location)
 WSAphWf2023_update$DAT<- ordered(WSAphWf2023_update$DAT, levels = c("0", "7-DAT1","10-DAT1", "13-DAT1", "3-DAT2","7-DAT2", "10-DAT2", "14-DAT2", "21-DAT2"))
 
 head(WSAphWf2023_update)
+
 ```
+
 
 
 ```{r}
@@ -97,10 +104,20 @@ dpr_data2023.App1 <- dpr_data2023 %>%
 head(dpr_data2023.App1)
 
 dpr_data2023.App2 <- dpr_data2023 %>%
-  filter (DAT %in% c("3-DAT2","7-DAT2","10-DAT2", "13-DAT2","21-DAT2"))
+  filter (DAT %in% c("3-DAT2","7-DAT2","10-DAT2", "14-DAT2","21-DAT2"))
 
 head(dpr_data2023.App2)
 ```
+
+```{r}
+dpr_data2023 %>%
+  dplyr::filter(Leaf_Location == "Bottom"& WF.Ad > 0) %>%
+  dplyr::group_by(DAT, WF.Ad) %>%
+  dplyr::summarise(n = n())%>%
+  ungroup()
+```
+
+
 
 ```{r}
 library(plyr)
@@ -161,12 +178,12 @@ summaryDPR <- data.frame(lapply(summaryDPR,
 
 
 #Summed DPR
-SummedDPR<- ddply(dpr_data2023, c("TRT","Product","DPR_Label","Block", "Leaf_Location"), summarise,
+SummedDPR<- ddply(dpr_data2023, c("TRT","Product","DPR_Label","Block", "Leaf_Location", "App"), summarise,
                     WF.Nym.Sum = sum(WF.Nym, na.rm=TRUE),
                     WF.Ad.Sum = sum(WF.Ad, na.rm=TRUE),
                     Aph.Tot.Sum = sum(Aph.Tot, na.rm=TRUE))
 
-SummedDPR.Avg<- ddply(SummedDPR, c("TRT","Product","DPR_Label", "Leaf_Location"), summarise,
+SummedDPR.Avg<- ddply(SummedDPR, c("TRT","Product","DPR_Label", "Leaf_Location", "App"), summarise,
                     N = sum(!is.na(WF.Nym.Sum)),
                     WF.Nym.SumAvg = mean(WF.Nym.Sum, na.rm=TRUE),
                     WF.Nym.SumSE   = sd(WF.Nym.Sum, na.rm=TRUE) / sqrt(N),
@@ -214,6 +231,7 @@ SummedDPR.App2.Avg<- ddply(SummedDPR.App2, c("TRT","Product","DPR_Label", "Leaf_
                     Aph.Tot.SumSE   = sd(Aph.Tot.Sum, na.rm=TRUE) / sqrt(N))
 SummedDPR.App2.Avg<-SummedDPR.App2.Avg[order(SummedDPR.App2.Avg$DPR_Label),]
 ```
+
 
 ```{r}
 # Summed data with selected DATs for global model
@@ -270,10 +288,6 @@ Anova(Aphid_Summed_app2)
 # Summed whitefly nymphs App1: Top leaf
 
 ```{r}
-library(boot)
-library(MASS)
-library(performance)
-library(vcd)
 
 # Whitefly nymphs
 # Top location
@@ -289,11 +303,16 @@ WF.Nym_Summed_top_app1<-lm(sqrt(WF.Nym.Sum)~DPR_Label,data = SummedWF_top_app1)
 Anova(WF.Nym_Summed_top_app1)
 
 #par(mfrow = c(2,2),mai=c(.7,.7,.2,.01));plot(WF.Nym_Summed);par(mfrow = c(1,1),mai=c(1,1,1,1))
-WF.Nym_Summed_top_app1 <- emmeans(WF.Nym_Summed_top_app1, pairwise ~ DPR_Label,adjust="FDR",type="response") #;LS_WF.Nym_Summed
+LS_WF.Nym_Summed_top_app1 <- emmeans(WF.Nym_Summed_top_app1, pairwise ~ DPR_Label,adjust="FDR",type="response") #;LS_WF.Nym_Summed
 
-cld(WF.Nym_Summed_top_app1$emmeans,alpha   = 0.05,Letters = letters,adjust="FDR")->CLD_WF.Nym_Summed_top_app1;CLD_WF.Nym_Summed_top_app1
+cld(LS_WF.Nym_Summed_top_app1$emmeans,alpha   = 0.05,Letters = letters,adjust="FDR")->CLD_WF.Nym_Summed_top_app1;CLD_WF.Nym_Summed_top_app1
+
+
+
+CLD_WF.Nym_Summed_top_app1
 ```
-##plotting
+## Average whitefly nymphs, App1: Top leaf 
+
 
 ```{r}
 
@@ -301,9 +320,16 @@ cld(WF.Nym_Summed_top_app1$emmeans,alpha   = 0.05,Letters = letters,adjust="FDR"
 
 #Whitefly nymphs average App1: Top leaf 
 
+SummedDPR.Avg_top1 <- SummedDPR.Avg%>%
+  filter (Leaf_Location == "Top")%>%
+  filter (App == "App1")
+
+XX<-as.data.frame(CLD_WF.Nym_Summed_top_app1[order(CLD_WF.Nym_Summed_top_app1),])
+XX$group<-gsub("[[:space:]]", "", XX$.group)
+XX$WF.Nym.SumAvg<-SummedDPR.Avg_top1$WF.Nym.SumAvg
+
 WFNymChart_dpr2023_top_app1 <- SummedDPR.App1.Avg %>%
   dplyr::filter (Leaf_Location == "Top")%>%
-  
   ggplot(aes(fill=forcats::fct_rev(DAT), y=WF.Nym.SumAvg, x=DPR_Label)) +
   geom_bar(position="stack", stat="identity", color="#333333", size=0.1) +
   scale_fill_brewer(palette="Spectral") +
@@ -316,7 +342,8 @@ WFNymChart_dpr2023_top_app1 <- SummedDPR.App1.Avg %>%
   xlab ("Insecticide and spray coverage")+
   labs(fill="DAT") + 
   ggtitle("App. 1: Top leaf") +
-  ylim(0,2)
+  ylim(0,2) +
+  geom_text(data=XX[complete.cases(XX),], aes(x=DPR_Label, y=WF.Nym.SumAvg, label=group), vjust=-1, hjust=.5)
  
  
 WFNymChart_dpr2023_top_app1
@@ -324,6 +351,8 @@ WFNymChart_dpr2023_top_app1
 ggsave(file="WFNymChart_dpr2023_top_app1.jpg", width=10, height=6, dpi=600)
 
 ```
+
+
 # Summed whitefly nymphs App1 bottom leaf
 
 ```{r}
@@ -333,7 +362,7 @@ ggsave(file="WFNymChart_dpr2023_top_app1.jpg", width=10, height=6, dpi=600)
 SummedWF_bottom_app1 <-  SummedDPR.App1 %>%
    filter (Leaf_Location == "Bottom")
 
-WF.Nym_Summed_bottom_app1<-lm(sqrt(WF.Nym.Sum)~DPR_Label+ Block,data = SummedWF_bottom_app1)
+WF.Nym_Summed_bottom_app1<-lm(sqrt(WF.Nym.Sum)~DPR_Label,data = SummedWF_bottom_app1)
 #WF.Nym_Summed <- glm.nb(round(WF.Nym.Sum,0)~DPR_Label+Block,data=SummedDPR)
 Anova(WF.Nym_Summed_bottom_app1)
 
@@ -348,6 +377,14 @@ cld(LS_WF.Nym_Summed_bottom_app1$emmeans,alpha   = 0.05,Letters = letters,adjust
 
 ```{r}
 #Average whitefly nymphs, App1: Bottom leaf
+
+SummedDPR.Avg_bottom1 <- SummedDPR.Avg%>%
+  filter (Leaf_Location == "Bottom")%>%
+  filter (App == "App1")
+
+XX<-as.data.frame(CLD_WF.Nym_Summed_bottom_app1[order(CLD_WF.Nym_Summed_bottom_app1),])
+XX$group<-gsub("[[:space:]]", "", XX$.group)
+XX$WF.Nym.SumAvg<-SummedDPR.Avg_bottom1$WF.Nym.SumAvg
 
 WFNymChart_dpr2023_bottom_app1 <- SummedDPR.App1.Avg %>%
   dplyr::filter (Leaf_Location == "Bottom")%>%
@@ -364,7 +401,8 @@ WFNymChart_dpr2023_bottom_app1 <- SummedDPR.App1.Avg %>%
   xlab ("Insecticide and spray coverage")+
   labs(fill="DAT") + 
   ggtitle("App. 1: Bottom leaf") +
-  ylim(0,2)
+  ylim(0,2) +
+  geom_text(data=XX ,aes(x=DPR_Label,y=WF.Nym.SumAvg,label=group,fill=NULL), vjust = -1, hjust = .5)
  
  
 WFNymChart_dpr2023_bottom_app1
@@ -384,16 +422,14 @@ library(vcd)
 # Whitefly adult
 # Application 1
 
- 
-
 WF.Ad_Summed_top_app1<-lm(sqrt(WF.Ad.Sum)~DPR_Label,data = SummedDPR.App1)
 #WF.Nym_Summed <- glm.nb(round(WF.Nym.Sum,0)~DPR_Label+Block,data=SummedDPR)
 Anova(WF.Ad_Summed_top_app1)
 
 #par(mfrow = c(2,2),mai=c(.7,.7,.2,.01));plot(WF.Nym_Summed);par(mfrow = c(1,1),mai=c(1,1,1,1))
-WF.Ad_Summed_top_app1 <- emmeans(WF.Ad_Summed_top_app1, pairwise ~ DPR_Label,adjust="FDR",type="response") #;LS_WF.Nym_Summed
+LS_WF.Ad_Summed_top_app1 <- emmeans(WF.Ad_Summed_top_app1, pairwise ~ DPR_Label,adjust="FDR",type="response") #;LS_WF.Nym_Summed
 
-cld(WF.Ad_Summed_top_app1$emmeans,alpha   = 0.05,Letters = letters,adjust="FDR")->CLD_WF.Ad_Summed_top_app1;CLD_WF.Ad_Summed_top_app1
+cld(LS_WF.Ad_Summed_top_app1$emmeans,alpha   = 0.05,Letters = letters,adjust="FDR")->CLD_WF.Ad_Summed_top_app1;CLD_WF.Ad_Summed_top_app1
 
 ```
 
@@ -401,6 +437,15 @@ cld(WF.Ad_Summed_top_app1$emmeans,alpha   = 0.05,Letters = letters,adjust="FDR")
 ```{r}
 
 #Average whitefly adults, App1
+
+SummedDPR.Avg_top1 <- SummedDPR.Avg%>%
+  filter (Leaf_Location == "Top")%>%
+  filter (App == "App1")
+
+XX<-as.data.frame(CLD_WF.Ad_Summed_top_app1[order(CLD_WF.Ad_Summed_top_app1),])
+XX$group<-gsub("[[:space:]]", "", XX$.group)
+XX$WF.Ad.SumAvg<-SummedDPR.Avg_top1$WF.Ad.SumAvg
+
 
 WFAdultChart_dpr2023_app1 <- SummedDPR.App1.Avg %>%
   filter(Leaf_Location == "Top")%>%
@@ -416,12 +461,14 @@ WFAdultChart_dpr2023_app1 <- SummedDPR.App1.Avg %>%
   xlab ("Insecticide and spray coverage")+
   labs(fill="DAT") + 
   ggtitle("App. 1") +
-  ylim(0,2)
+  ylim(0,2)+
+  geom_text(data=XX ,aes(x=DPR_Label,y=WF.Ad.SumAvg,label=group,fill=NULL), vjust = -1, hjust = .5)
  
  
 WFAdultChart_dpr2023_app1
 
 ggsave(file="WFAdultChart_dpr2023_app1.jpg", width=10, height=6, dpi=600)
+
 ```
 
 #Total Aphid App1, Top leaf
@@ -435,20 +482,31 @@ library(vcd)
 # Total aphid
 # Application 1
 
-Aph.Tot_Summed_top_app1<-lm(sqrt(Aph.Tot.Sum)~DPR_Label,data = SummedDPR.App1)
+Summed_Aph_Tot_top_app1 <-  SummedDPR.App1 %>%
+   filter (Leaf_Location == "Top")
+
+Aph.Tot_Summed_top_app1<-lm(sqrt(Aph.Tot.Sum)~DPR_Label,data = Summed_Aph_Tot_top_app1)
 #WF.Nym_Summed <- glm.nb(round(WF.Nym.Sum,0)~DPR_Label+Block,data=SummedDPR)
 Anova(Aph.Tot_Summed_top_app1)
 
 #par(mfrow = c(2,2),mai=c(.7,.7,.2,.01));plot(WF.Nym_Summed);par(mfrow = c(1,1),mai=c(1,1,1,1))
-Aph.Tot_Summed_top_app1 <- emmeans(Aph.Tot_Summed_top_app1, pairwise ~ DPR_Label,adjust="FDR",type="response") #;LS_WF.Nym_Summed
+LS_Aph.Tot_Summed_top_app1 <- emmeans(Aph.Tot_Summed_top_app1, pairwise ~ DPR_Label,adjust="FDR",type="response") #;LS_WF.Nym_Summed
 
-cld(Aph.Tot_Summed_top_app1$emmeans,alpha   = 0.05,Letters = letters,adjust="FDR")->CLD_Aph.Tot_Summed_top_app1;CLD_Aph.Tot_Summed_top_app1
+cld(LS_Aph.Tot_Summed_top_app1$emmeans,alpha   = 0.05,Letters = letters,adjust="FDR")->CLD_Aph.Tot_Summed_top_app1;CLD_Aph.Tot_Summed_top_app1
 ```
 
 # Averageaphid, App1, Top leaf
 
 ```{r}
-# average aphid App1, Top leaf
+# average aphid App1, Bottom leaf
+SummedDPR.Avg_top1 <- SummedDPR.Avg%>%
+  filter (Leaf_Location == "Top")%>%
+  filter (App == "App1")
+
+XX<-as.data.frame(CLD_Aph.Tot_Summed_top_app1[order(CLD_Aph.Tot_Summed_top_app1$DPR_Label),])
+XX$group<-gsub("[[:space:]]", "", XX$.group)
+XX$Aph.Tot.SumAvg<-SummedDPR.Avg_top1$Aph.Tot.SumAvg
+
 
 TotalAphidChart_dpr2023_top_app1 <- SummedDPR.App1.Avg %>%
   dplyr::filter (Leaf_Location == "Top")%>%
@@ -465,19 +523,54 @@ TotalAphidChart_dpr2023_top_app1 <- SummedDPR.App1.Avg %>%
   xlab ("Insecticide and spray coverage")+
   labs(fill="DAT") + 
   ggtitle("App. 1: Top leaf")+
-  ylim (0,90)
+  ylim(0,(max(XX$Aph.Tot.SumAvg)*2))+
+  geom_text(data=XX ,aes(x=DPR_Label,y=Aph.Tot.SumAvg,label=group,fill=NULL), vjust = -1, hjust = .5)
  
  
 TotalAphidChart_dpr2023_top_app1
 
 ggsave(file="TotalAphidChart_dpr2023_top_app1.jpg", width=10, height=6, dpi=600)
+
 ```
 
+# Total Aphids App1: Bottom leaf
+
+
+```{r}
+library(boot)
+library(MASS)
+library(performance)
+library(vcd)
+
+# Total aphid
+# Bottom leaf: Application 1
+
+Summed_Aph_Tot_bottom_app1 <-  SummedDPR.App1 %>%
+   filter (Leaf_Location == "Bottom")
+
+Aph.Tot_Summed_bottom_app1<-lm(sqrt(Aph.Tot.Sum)~DPR_Label,data = Summed_Aph_Tot_bottom_app1)
+#WF.Nym_Summed <- glm.nb(round(WF.Nym.Sum,0)~DPR_Label+Block,data=SummedDPR)
+Anova(Aph.Tot_Summed_bottom_app1)
+
+#par(mfrow = c(2,2),mai=c(.7,.7,.2,.01));plot(WF.Nym_Summed);par(mfrow = c(1,1),mai=c(1,1,1,1))
+LS_Aph.Tot_Summed_bottom_app1 <- emmeans(Aph.Tot_Summed_bottom_app1, pairwise ~ DPR_Label,adjust="FDR",type="response") #;LS_WF.Nym_Summed
+
+cld(LS_Aph.Tot_Summed_bottom_app1$emmeans,alpha   = 0.05,Letters = letters,adjust="FDR")->CLD_Aph.Tot_Summed_bottom_app1;CLD_Aph.Tot_Summed_bottom_app1
+```
 
 
 # Average aphid, App1, Bottom leaf
 ```{r}
-#Average Total Aphid, App1: Bottom leaf
+
+# average aphid App1, Bottom leaf
+SummedDPR.Avg_bottom1 <- SummedDPR.Avg%>%
+  filter (Leaf_Location == "Bottom")%>%
+  filter (App == "App1")
+
+XX<-as.data.frame(CLD_Aph.Tot_Summed_bottom_app1[order(CLD_Aph.Tot_Summed_bottom_app1$DPR_Label),])
+XX$group<-gsub("[[:space:]]", "", XX$.group)
+XX$Aph.Tot.SumAvg<-SummedDPR.Avg_bottom1$Aph.Tot.SumAvg
+
 
 TotalAphidChart_dpr2023_bottom_app1 <- SummedDPR.App1.Avg %>%
   dplyr::filter (Leaf_Location == "Bottom")%>%
@@ -494,12 +587,329 @@ TotalAphidChart_dpr2023_bottom_app1 <- SummedDPR.App1.Avg %>%
   xlab ("Insecticide and spray coverage")+
   labs(fill="DAT") + 
   ggtitle("App. 1: Bottom leaf")+
-  ylim (0,60)
+  ylim(0,(max(XX$Aph.Tot.SumAvg)*1.3))+
+  geom_text(data=XX ,aes(x=DPR_Label,y=Aph.Tot.SumAvg,label=group,fill=NULL), vjust = -1, hjust = .5)
  
  
 TotalAphidChart_dpr2023_bottom_app1
 
 ggsave(file="TotalAphidChart_dpr2023_bottom_app1.jpg", width=10, height=6, dpi=600)
+
 ```
 
+# Appliation 2
+## Whitefly nymphs, App2: Top leaf
+
+```{r}
+library(boot)
+library(MASS)
+library(performance)
+library(vcd)
+
+# Whitefly nymphs
+# Top location
+# Application 2
+
+ SummedWF_top_app2 <-  SummedDPR.App2 %>%
+   filter (Leaf_Location == "Top")
+
+ SummedWF_top_app2
+
+WF.Nym_Summed_top_app2<-lm(sqrt(WF.Nym.Sum)~DPR_Label,data = SummedWF_top_app2)
+#WF.Nym_Summed <- glm.nb(round(WF.Nym.Sum,0)~DPR_Label+Block,data=SummedDPR)
+Anova(WF.Nym_Summed_top_app2)
+
+#par(mfrow = c(2,2),mai=c(.7,.7,.2,.01));plot(WF.Nym_Summed);par(mfrow = c(1,1),mai=c(1,1,1,1))
+LS_WF.Nym_Summed_top_app2 <- emmeans(WF.Nym_Summed_top_app2, pairwise ~ DPR_Label,adjust="FDR",type="response") #;LS_WF.Nym_Summed
+
+cld(LS_WF.Nym_Summed_top_app2$emmeans,alpha   = 0.05,Letters = letters,adjust="FDR")->CLD_WF.Nym_Summed_top_app2;CLD_WF.Nym_Summed_top_app2
+```
+
+# Average Whitefly nymphs App2: Top leaf
+
+```{r}
+
+#Assigning cld letters
+SummedDPR.Avg_top2 <- SummedDPR.Avg%>%
+  filter (Leaf_Location == "Top")%>%
+  filter (App == "App2")
+
+XX<-as.data.frame(CLD_WF.Nym_Summed_top_app2[order(CLD_WF.Nym_Summed_top_app2),])
+XX$group<-gsub("[[:space:]]", "", XX$.group)
+XX$WF.Nym.SumAvg<-SummedDPR.Avg_top2$WF.Nym.SumAvg
+
+
+#Whitefly nymphs average App2: Top leaf 
+
+WFNymChart_dpr2023_top_app2 <- SummedDPR.App2.Avg %>%
+  dplyr::filter (Leaf_Location == "Top")%>%
+  
+  ggplot(aes(fill=forcats::fct_rev(DAT), y=WF.Nym.SumAvg, x=DPR_Label)) +
+  geom_bar(position="stack", stat="identity", color="#333333", size=0.1) +
+  scale_fill_brewer(palette="Spectral") +
+  theme_classic() +
+  theme(axis.text.x=element_text(angle=60, hjust=0.99)) +
+  theme(text=element_text(size=15)) +
+  theme(axis.text.x=element_text(color="#000000", size=12),
+        axis.text.y=element_text(color="#000000", size=12)) +
+  ylab("Avg. Whitefly nymph (per leaf)") +
+  xlab ("Insecticide and spray coverage")+
+  labs(fill="DAT") + 
+  ggtitle("App. 2: Top leaf") +
+  ylim(0,10) + 
+  geom_text(data=XX ,aes(x=DPR_Label,y=WF.Nym.SumAvg,label=group,fill=NULL), vjust = -1, hjust = .5)
+ 
+ 
+WFNymChart_dpr2023_top_app2
+
+ggsave(file="WFNymChart_dpr2023_top_app2.jpg", width=10, height=6, dpi=600)
+```
+
+# Whitefly nymphs App2: Bottom leaf
+```{r}
+library(boot)
+library(MASS)
+library(performance)
+library(vcd)
+
+# Whitefly nymphs
+# Top location
+# Application 2
+
+ SummedWF_bottom_app2 <-  SummedDPR.App2 %>%
+   filter (Leaf_Location == "Bottom")
+
+
+WF.Nym_Summed_bottom_app2<-lm(sqrt (WF.Nym.Sum)~DPR_Label,data = SummedWF_bottom_app2)
+#WF.Nym_Summed <- glm.nb(round(WF.Nym.Sum,0)~DPR_Label+Block,data=SummedDPR)
+Anova(WF.Nym_Summed_bottom_app2)
+
+#par(mfrow = c(2,2),mai=c(.7,.7,.2,.01));plot(WF.Nym_Summed);par(mfrow = c(1,1),mai=c(1,1,1,1))
+LS_WF.Nym_Summed_bottom_app2 <- emmeans(WF.Nym_Summed_bottom_app2, pairwise ~ DPR_Label,adjust="FDR",type="response") #;LS_WF.Nym_Summed
+
+cld(LS_WF.Nym_Summed_bottom_app2$emmeans,alpha   = 0.05,Letters = letters,adjust="FDR")->CLD_WF.Nym_Summed_bottom_app2;CLD_WF.Nym_Summed_bottom_app2
+
+
+```
+
+# Average whitefly nymphs App2: Bottom leaf
+
+
+```{r}
+#Whitefly nymphs average App2: Top leaf 
+
+#Assigning cld letters
+SummedDPR.Avg_bottom2 <- SummedDPR.Avg%>%
+  filter (Leaf_Location == "Bottom")%>%
+  filter (App == "App2")
+
+
+XX<-as.data.frame(CLD_WF.Nym_Summed_bottom_app2[order(CLD_WF.Nym_Summed_bottom_app2),])
+XX$group<-gsub("[[:space:]]", "", XX$.group)
+XX$WF.Nym.SumAvg<-SummedDPR.Avg_bottom2$WF.Nym.SumAvg
+
+# Average whitefly nymphs App2 bottom leaf
+
+WFNymChart_dpr2023_bottom_app2 <- SummedDPR.App2.Avg %>%
+  dplyr::filter (Leaf_Location == "Bottom")%>%
+  
+  ggplot(aes(fill=forcats::fct_rev(DAT), y=WF.Nym.SumAvg, x=DPR_Label)) +
+  geom_bar(position="stack", stat="identity", color="#333333", size=0.1) +
+  scale_fill_brewer(palette="Spectral") +
+  theme_classic() +
+  theme(axis.text.x=element_text(angle=60, hjust=0.99)) +
+  theme(text=element_text(size=15)) +
+  theme(axis.text.x=element_text(color="#000000", size=12),
+        axis.text.y=element_text(color="#000000", size=12)) +
+  ylab("Avg. Whitefly nymph (per leaf)") +
+  xlab ("Insecticide and spray coverage")+
+  labs(fill="DAT") + 
+  ggtitle("App. 2: Bottom leaf") +
+  ylim(0,10) +
+  geom_text(data=XX ,aes(x=DPR_Label,y=WF.Nym.SumAvg,label=group,fill=NULL), vjust = -1, hjust = .5)
+ 
+ 
+WFNymChart_dpr2023_bottom_app2
+
+ggsave(file="WFNymChart_dpr2023_bottom_app2.jpg", width=10, height=6, dpi=600)
+```
+
+# Whitefly adults App2
+
+```{r}
+library(boot)
+library(MASS)
+library(performance)
+library(vcd)
+
+# Whitefly adult
+# Application 2
+
+WF.Ad_Summed_top_app2<-lm(sqrt(WF.Ad.Sum)~DPR_Label,data = SummedDPR.App2)
+#WF.Nym_Summed <- glm.nb(round(WF.Nym.Sum,0)~DPR_Label+Block,data=SummedDPR)
+Anova(WF.Ad_Summed_top_app2)
+
+#par(mfrow = c(2,2),mai=c(.7,.7,.2,.01));plot(WF.Nym_Summed);par(mfrow = c(1,1),mai=c(1,1,1,1))
+LS_WF.Ad_Summed_top_app2 <- emmeans(WF.Ad_Summed_top_app2, pairwise ~ DPR_Label,adjust="FDR",type="response") #;LS_WF.Nym_Summed
+
+cld(LS_WF.Ad_Summed_top_app2$emmeans,alpha   = 0.05,Letters = letters,adjust="FDR")->CLD_WF.Ad_Summed_top_app2;CLD_WF.Ad_Summed_top_app2
+```
+
+
+```{r}
+#Average whitefly adults, App2
+
+SummedDPR.Avg_top2 <- SummedDPR.Avg%>%
+  filter (Leaf_Location == "Top")%>%
+  filter (App == "App2")
+
+XX<-as.data.frame(CLD_WF.Ad_Summed_top_app2[order(CLD_WF.Ad_Summed_top_app2),])
+XX$group<-gsub("[[:space:]]", "", XX$.group)
+XX$WF.Ad.SumAvg<-SummedDPR.Avg_top2$WF.Ad.SumAvg
+
+
+WFAdultChart_dpr2023_app2 <- SummedDPR.App2.Avg %>%
+  filter(Leaf_Location == "Top")%>%
+  ggplot(aes(fill=forcats::fct_rev(DAT), y=WF.Ad.SumAvg, x=DPR_Label)) +
+  geom_bar(position="stack", stat="identity", color="#333333", size=0.1) +
+  scale_fill_brewer(palette="Spectral") +
+  theme_classic() +
+  theme(axis.text.x=element_text(angle=60, hjust=0.99)) +
+  theme(text=element_text(size=15)) +
+  theme(axis.text.x=element_text(color="#000000", size=12),
+        axis.text.y=element_text(color="#000000", size=12)) +
+  ylab("Avg. Whitefly adult (per leaf)") +
+  xlab ("Insecticide and spray coverage")+
+  labs(fill="DAT") + 
+  ggtitle("App. 2") +
+  ylim(0,6)+
+  geom_text(data=XX ,aes(x=DPR_Label,y=WF.Ad.SumAvg,label=group,fill=NULL), vjust = -1, hjust = .5)
+ 
+ 
+WFAdultChart_dpr2023_app2
+
+ggsave(file="WFAdultChart_dpr2023_app2.jpg", width=10, height=6, dpi=600)
+```
+
+# Total Aphid App2: Top leaf
+
+```{r}
+library(boot)
+library(MASS)
+library(performance)
+library(vcd)
+
+# Total aphid
+# Top leaf: Application 2
+
+Summed_Aph_Tot_top_app2 <-  SummedDPR.App2 %>%
+   filter (Leaf_Location == "Top")
+
+Aph.Tot_Summed_top_app2<-lm(sqrt(Aph.Tot.Sum)~DPR_Label,data = Summed_Aph_Tot_top_app2)
+#WF.Nym_Summed <- glm.nb(round(WF.Nym.Sum,0)~DPR_Label+Block,data=SummedDPR)
+Anova(Aph.Tot_Summed_top_app1)
+
+#par(mfrow = c(2,2),mai=c(.7,.7,.2,.01));plot(WF.Nym_Summed);par(mfrow = c(1,1),mai=c(1,1,1,1))
+LS_Aph.Tot_Summed_top_app2 <- emmeans(Aph.Tot_Summed_top_app2, pairwise ~ DPR_Label,adjust="FDR",type="response") #;LS_WF.Nym_Summed
+
+cld(LS_Aph.Tot_Summed_top_app2$emmeans,alpha   = 0.05,Letters = letters,adjust="FDR")->CLD_Aph.Tot_Summed_top_app2;CLD_Aph.Tot_Summed_top_app2
+```
+
+# Average Total aphid App2: Top leaf
+
+```{r}
+# average aphid App2, Top leaf
+
+
+SummedDPR.Avg_top <- SummedDPR.Avg%>%
+  filter (Leaf_Location == "Top")
+
+XX<-as.data.frame(CLD_Aph.Tot_Summed_top_app2[order(CLD_Aph.Tot_Summed_top_app2$DPR_Label),])
+XX$group<-gsub("[[:space:]]", "", XX$.group)
+XX$Aph.Tot.SumAvg<-SummedDPR.Avg_top$Aph.Tot.SumAvg
+
+
+TotalAphidChart_dpr2023_top_app2 <- SummedDPR.App2.Avg %>%
+  dplyr::filter (Leaf_Location == "Top")%>%
+  
+  ggplot(aes(fill=forcats::fct_rev(DAT), y=Aph.Tot.SumAvg, x=DPR_Label)) +
+  geom_bar(position="stack", stat="identity", color="#333333", size=0.1) +
+  scale_fill_brewer(palette="Spectral") +
+  theme_classic() +
+  theme(axis.text.x=element_text(angle=60, hjust=0.99)) +
+  theme(text=element_text(size=15)) +
+  theme(axis.text.x=element_text(color="#000000", size=12),
+        axis.text.y=element_text(color="#000000", size=12)) +
+  ylab("Avg. Total aphid (per leaf)") +
+  xlab ("Insecticide and spray coverage")+
+  labs(fill="DAT") + 
+  ggtitle("App. 2: Top leaf")+
+  ylim (0,500)+ 
+  geom_text(data=XX ,aes(x=DPR_Label,y=Aph.Tot.SumAvg,label=group,fill=NULL), vjust = -1, hjust = .5)
+ 
+ 
+TotalAphidChart_dpr2023_top_app2
+
+ggsave(file="TotalAphidChart_dpr2023_top_app2.jpg", width=10, height=6, dpi=600)
+```
+
+# Total aphid App2: Bottom leaf
+
+```{r}
+# Total aphid
+# Bottom leaf: Application 2
+
+Summed_Aph_Tot_bottom_app2 <-  SummedDPR.App2 %>%
+   filter (Leaf_Location == "Bottom")
+
+Aph.Tot_Summed_bottom_app2<-lm(sqrt(Aph.Tot.Sum)~DPR_Label,data = Summed_Aph_Tot_top_app2)
+#WF.Nym_Summed <- glm.nb(round(WF.Nym.Sum,0)~DPR_Label+Block,data=SummedDPR)
+Anova(Aph.Tot_Summed_bottom_app2)
+
+#par(mfrow = c(2,2),mai=c(.7,.7,.2,.01));plot(WF.Nym_Summed);par(mfrow = c(1,1),mai=c(1,1,1,1))
+LS_Aph.Tot_Summed_bottom_app2 <- emmeans(Aph.Tot_Summed_bottom_app2, pairwise ~ DPR_Label,adjust="FDR",type="response") #;LS_WF.Nym_Summed
+
+cld(LS_Aph.Tot_Summed_bottom_app2$emmeans,alpha   = 0.05,Letters = letters,adjust="FDR")->CLD_Aph.Tot_Summed_bottom_app2;CLD_Aph.Tot_Summed_bottom_app2
+```
+
+# Total aphid App2: Bottom leaf
+
+```{r}
+# average aphid App2, Bottom leaf
+SummedDPR.Avg_bottom <- SummedDPR.Avg%>%
+  filter (Leaf_Location == "Bottom")%>%
+  filter (App == "App2")
+
+XX<-as.data.frame(CLD_Aph.Tot_Summed_bottom_app2[order(CLD_Aph.Tot_Summed_bottom_app2$DPR_Label),])
+XX$group<-gsub("[[:space:]]", "", XX$.group)
+XX$Aph.Tot.SumAvg<-SummedDPR.Avg_bottom$Aph.Tot.SumAvg
+
+
+TotalAphidChart_dpr2023_bottom_app2 <- SummedDPR.App2.Avg %>%
+  dplyr::filter (Leaf_Location == "Bottom")%>%
+  
+  ggplot(aes(fill=forcats::fct_rev(DAT), y=Aph.Tot.SumAvg, x=DPR_Label)) +
+  geom_bar(position="stack", stat="identity", color="#333333", size=0.1) +
+  scale_fill_brewer(palette="Spectral") +
+  theme_classic() +
+  theme(axis.text.x=element_text(angle=60, hjust=0.99)) +
+  theme(text=element_text(size=15)) +
+  theme(axis.text.x=element_text(color="#000000", size=12),
+        axis.text.y=element_text(color="#000000", size=12)) +
+  ylab("Avg. Total aphid (per leaf)") +
+  xlab ("Insecticide and spray coverage")+
+  labs(fill="DAT") + 
+  ggtitle("App. 2: Top leaf")+
+  ylim (0,200)+
+  geom_text(data=XX ,aes(x=DPR_Label,y=Aph.Tot.SumAvg,label=group,fill=NULL), vjust = -1, hjust = .5)
+ 
+ 
+TotalAphidChart_dpr2023_bottom_app2
+
+ggsave(file="TotalAphidChart_dpr2023_bottom_app2.jpg", width=10, height=6, dpi=600)
+```
+
+```{r}
+SummedDPR.App2.Avg
+```
 
