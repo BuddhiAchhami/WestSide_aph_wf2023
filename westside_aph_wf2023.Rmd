@@ -110,6 +110,8 @@ head(dpr_data2023.App2)
 ```
 
 ```{r}
+# Counting number of Whitefly Adults data on bottom leaf
+
 dpr_data2023 %>%
   dplyr::filter(Leaf_Location == "Bottom"& WF.Ad > 0) %>%
   dplyr::group_by(DAT, WF.Ad) %>%
@@ -349,7 +351,7 @@ WFNymChart_dpr2023_top_app1 <- SummedDPR.App1.Avg %>%
  
 WFNymChart_dpr2023_top_app1
 
-ggsave(path = "Figure", file="WFNymChart_dpr2023_top_app1.jpg", width=10, height=6, dpi=600)
+ggsave(path = "Figure", path = "Figure", file="WFNymChart_dpr2023_top_app1.jpg", width=10, height=6, dpi=600)
 
 ```
 
@@ -408,7 +410,7 @@ WFNymChart_dpr2023_bottom_app1 <- SummedDPR.App1.Avg %>%
  
 WFNymChart_dpr2023_bottom_app1
 
-ggsave(file="WFNymChart_dpr2023_bottom_app1.jpg", width=10, height=6, dpi=600)
+ggsave(path = "Figure", file="WFNymChart_dpr2023_bottom_app1.jpg", width=10, height=6, dpi=600)
 
 ```
 
@@ -464,7 +466,7 @@ WFAdultChart_dpr2023_app1 <- SummedDPR.App1.Avg %>%
  
 WFAdultChart_dpr2023_app1
 
-ggsave(file="WFAdultChart_dpr2023_app1.jpg", width=10, height=6, dpi=600)
+ggsave(path = "Figure", file="WFAdultChart_dpr2023_app1.jpg", width=10, height=6, dpi=600)
 
 ```
 
@@ -521,7 +523,7 @@ TotalAphidChart_dpr2023_top_app1 <- SummedDPR.App1.Avg %>%
  
 TotalAphidChart_dpr2023_top_app1
 
-ggsave(file="TotalAphidChart_dpr2023_top_app1.jpg", width=10, height=6, dpi=600)
+ggsave(path = "Figure", file="TotalAphidChart_dpr2023_top_app1.jpg", width=10, height=6, dpi=600)
 
 ```
 
@@ -581,7 +583,7 @@ TotalAphidChart_dpr2023_bottom_app1 <- SummedDPR.App1.Avg %>%
  
 TotalAphidChart_dpr2023_bottom_app1
 
-ggsave(file="TotalAphidChart_dpr2023_bottom_app1.jpg", width=10, height=6, dpi=600)
+ggsave(path = "Figure", file="TotalAphidChart_dpr2023_bottom_app1.jpg", width=10, height=6, dpi=600)
 
 ```
 
@@ -650,7 +652,7 @@ WFNymChart_dpr2023_top_app2 <- SummedDPR.App2.Avg %>%
  
 WFNymChart_dpr2023_top_app2
 
-ggsave(file="WFNymChart_dpr2023_top_app2.jpg", width=10, height=6, dpi=600)
+ggsave(path = "Figure", file="WFNymChart_dpr2023_top_app2.jpg", width=10, height=6, dpi=600)
 ```
 
 
@@ -748,7 +750,7 @@ WFNymChart_dpr2023_bottom_app2 <- SummedDPR.App2.Avg %>%
  
 WFNymChart_dpr2023_bottom_app2
 
-ggsave(file="WFNymChart_dpr2023_bottom_app2.jpg", width=10, height=6, dpi=600)
+ggsave(path = "Figure", file="WFNymChart_dpr2023_bottom_app2.jpg", width=10, height=6, dpi=600)
 ```
 
 # Whitefly adults App2
@@ -801,7 +803,7 @@ WFAdultChart_dpr2023_app2 <- SummedDPR.App2.Avg %>%
  
 WFAdultChart_dpr2023_app2
 
-ggsave(file="WFAdultChart_dpr2023_app2.jpg", width=10, height=6, dpi=600)
+ggsave(path = "Figure", file="WFAdultChart_dpr2023_app2.jpg", width=10, height=6, dpi=600)
 ```
 
 # Total Aphid App2: Top leaf
@@ -854,13 +856,13 @@ TotalAphidChart_dpr2023_top_app2 <- SummedDPR.App2.Avg %>%
   xlab ("Insecticide and spray coverage")+
   labs(fill="DAT") + 
   ggtitle("App. 2: Top leaf")+
-  ylim(0,(max(XX$Aph.Tot.SumAvg)*2))+ 
+  coord_cartesian(ylim=c(0,(max(XX$Aph.Tot.SumAvg*2.5))))+ 
   geom_text(data=XX ,aes(x=DPR_Label,y=Aph.Tot.SumAvg,label=group,fill=NULL), vjust = -1, hjust = .5)
  
  
 TotalAphidChart_dpr2023_top_app2
 
-ggsave(file="TotalAphidChart_dpr2023_top_app2.jpg", width=10, height=6, dpi=600)
+ggsave(path = "Figure", file="TotalAphidChart_dpr2023_top_app2.jpg", width=10, height=6, dpi=600)
 ```
 
 # Total aphid App2: Bottom leaf
@@ -919,14 +921,12 @@ TotalAphidChart_dpr2023_bottom_app2
 ggsave(path = "Figure", file="TotalAphidChart_dpr2023_bottom_app2.jpg", width=10, height=6, dpi=600)
 ```
 
-## Mixed effect model with repeated measures
 
 ```{r}
-dpr_data2023_app1 <- dpr_data2023 %>%
-  dplyr::select (DAT, DPR_Label,Block, Aph.Tot )
-
-dpr_data2023_app1$DPR_Label <- as.factor (dpr_data2023_app1$DPR_Label)
-head(dpr_data2023_app1)
+SummedDPR.App2.Avg %>%
+  dplyr::filter (Leaf_Location == "Top", DPR_Label == "Buprofezin_StdCov")%>%
+  dplyr::group_by(DAT)%>%
+  dplyr::summarise(sum= sum(Aph.Tot.SumAvg))
 ```
 
 
