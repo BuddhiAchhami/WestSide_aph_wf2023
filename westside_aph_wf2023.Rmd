@@ -349,7 +349,7 @@ WFNymChart_dpr2023_top_app1 <- SummedDPR.App1.Avg %>%
  
 WFNymChart_dpr2023_top_app1
 
-ggsave(file="WFNymChart_dpr2023_top_app1.jpg", width=10, height=6, dpi=600)
+ggsave(path = "Figure", file="WFNymChart_dpr2023_top_app1.jpg", width=10, height=6, dpi=600)
 
 ```
 
@@ -415,10 +415,6 @@ ggsave(file="WFNymChart_dpr2023_bottom_app1.jpg", width=10, height=6, dpi=600)
 # Whitefly adults App1
 
 ```{r}
-library(boot)
-library(MASS)
-library(performance)
-library(vcd)
 
 # Whitefly adult
 # Application 1
@@ -474,11 +470,6 @@ ggsave(file="WFAdultChart_dpr2023_app1.jpg", width=10, height=6, dpi=600)
 
 #Total Aphid App1, Top leaf
 ```{r}
-
-library(boot)
-library(MASS)
-library(performance)
-library(vcd)
 
 # Total aphid
 # Application 1
@@ -538,10 +529,6 @@ ggsave(file="TotalAphidChart_dpr2023_top_app1.jpg", width=10, height=6, dpi=600)
 
 
 ```{r}
-library(boot)
-library(MASS)
-library(performance)
-library(vcd)
 
 # Total aphid
 # Bottom leaf: Application 1
@@ -690,8 +677,40 @@ cld(LS_WF.Nym_Summed_bottom_app2$emmeans,alpha   = 0.05,Letters = letters,adjust
 
 ```
 
-# Average whitefly nymphs App2: Bottom leaf
+# Back transform to address the "Issue: Note: Use 'contrast(regrid(object), ...)' to obtain contrasts of back-transformed estimates"
 
+```{r}
+# Load necessary libraries
+library(emmeans)
+library(multcomp)
+
+# Fit the model
+WF.Nym_Summed_bottom_app2 <- lm(sqrt(WF.Nym.Sum) ~ DPR_Label, data = SummedWF_bottom_app2)
+
+# Anova test
+Anova(WF.Nym_Summed_bottom_app2)
+
+# Obtain emmeans object
+emmeans_object_wf <- emmeans(WF.Nym_Summed_bottom_app2, ~ DPR_Label)
+
+# Use regrid() to obtain back-transformed estimates
+back_transformed_emmeans_wf <- regrid(emmeans_object_wf)
+
+# Obtain pairwise comparisons with FDR adjustment and back-transformed estimates
+pairwise_comparisons_wf <- contrast(back_transformed_emmeans_wf, method = "pairwise", adjust = "FDR")
+
+# Print the results
+#pairwise_comparisons_wf
+
+# Extract and plot the letter-based compact letter display
+CLD_WF.Nym_Summed_bottom_app2 <- cld(back_transformed_emmeans_wf, alpha = 0.05, Letters = letters, adjust = "FDR")
+
+# Print the compact letter display
+CLD_WF.Nym_Summed_bottom_app2
+```
+
+
+# Average whitefly nymphs App2: Bottom leaf
 
 ```{r}
 #Whitefly nymphs average App2: Top leaf 
@@ -735,10 +754,6 @@ ggsave(file="WFNymChart_dpr2023_bottom_app2.jpg", width=10, height=6, dpi=600)
 # Whitefly adults App2
 
 ```{r}
-library(boot)
-library(MASS)
-library(performance)
-library(vcd)
 
 # Whitefly adult
 # Application 2
@@ -809,21 +824,19 @@ cld(LS_Aph.Tot_Summed_top_app2$emmeans,alpha   = 0.05,Letters = letters,adjust="
 ```
 
 
-
-
 # Average Total aphid App2: Top leaf
 
 ```{r}
 # average aphid App2, Top leaf
 
 
-SummedDPR.Avg_top <- SummedDPR.Avg%>%
+SummedDPR.Avg_top2 <- SummedDPR.Avg%>%
   filter (Leaf_Location == "Top")%>%
   filter(App == "App2")
 
 XX<-as.data.frame(CLD_Aph.Tot_Summed_top_app2[order(CLD_Aph.Tot_Summed_top_app2$DPR_Label),])
 XX$group<-gsub("[[:space:]]", "", XX$.group)
-XX$Aph.Tot.SumAvg<-SummedDPR.Avg_top$Aph.Tot.SumAvg
+XX$Aph.Tot.SumAvg<-SummedDPR.Avg_top2$Aph.Tot.SumAvg
 
 
 TotalAphidChart_dpr2023_top_app2 <- SummedDPR.App2.Avg %>%
@@ -841,7 +854,7 @@ TotalAphidChart_dpr2023_top_app2 <- SummedDPR.App2.Avg %>%
   xlab ("Insecticide and spray coverage")+
   labs(fill="DAT") + 
   ggtitle("App. 2: Top leaf")+
-  ylim(0,(max(XX$Aph.Tot.SumAvg)*1.3))+ 
+  ylim(0,(max(XX$Aph.Tot.SumAvg)*2))+ 
   geom_text(data=XX ,aes(x=DPR_Label,y=Aph.Tot.SumAvg,label=group,fill=NULL), vjust = -1, hjust = .5)
  
  
@@ -873,13 +886,13 @@ cld(LS_Aph.Tot_Summed_bottom_app2$emmeans,alpha   = 0.05,Letters = letters,adjus
 
 ```{r}
 # average aphid App2, Bottom leaf
-SummedDPR.Avg_bottom <- SummedDPR.Avg%>%
+SummedDPR.Avg_bottom2 <- SummedDPR.Avg%>%
   filter (Leaf_Location == "Bottom")%>%
   filter (App == "App2")
 
 XX<-as.data.frame(CLD_Aph.Tot_Summed_bottom_app2[order(CLD_Aph.Tot_Summed_bottom_app2$DPR_Label),])
 XX$group<-gsub("[[:space:]]", "", XX$.group)
-XX$Aph.Tot.SumAvg<-SummedDPR.Avg_bottom$Aph.Tot.SumAvg
+XX$Aph.Tot.SumAvg<-SummedDPR.Avg_bottom2$Aph.Tot.SumAvg
 
 
 TotalAphidChart_dpr2023_bottom_app2 <- SummedDPR.App2.Avg %>%
@@ -903,10 +916,18 @@ TotalAphidChart_dpr2023_bottom_app2 <- SummedDPR.App2.Avg %>%
  
 TotalAphidChart_dpr2023_bottom_app2
 
-ggsave(file="TotalAphidChart_dpr2023_bottom_app2.jpg", width=10, height=6, dpi=600)
+ggsave(path = "Figure", file="TotalAphidChart_dpr2023_bottom_app2.jpg", width=10, height=6, dpi=600)
 ```
 
+## Mixed effect model with repeated measures
+
 ```{r}
-SummedDPR.App2.Avg
+dpr_data2023_app1 <- dpr_data2023 %>%
+  dplyr::select (DAT, DPR_Label,Block, Aph.Tot )
+
+dpr_data2023_app1$DPR_Label <- as.factor (dpr_data2023_app1$DPR_Label)
+head(dpr_data2023_app1)
 ```
+
+
 
